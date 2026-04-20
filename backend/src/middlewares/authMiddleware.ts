@@ -19,3 +19,18 @@ export const authenticate = (req: Request, res: Response, next: NextFunction) =>
     res.status(401).json({ message: 'Token is not valid' });
   }
 };
+
+// for RBAC
+export const authorize = (roles: string[]) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    // req.user was populated by the authenticate middleware
+    const user = (req as any).user;
+
+    if (!user || !roles.includes(user.role)) {
+      return res.status(403).json({ 
+        message: `Access denied. Requires one of the following roles: ${roles.join(', ')}` 
+      });
+    }
+    next();
+  };
+};
