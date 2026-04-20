@@ -1,6 +1,9 @@
+// file containing all the logic for APIs
+
 import type { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { prisma } from '../utils/prisma.js';
+import jwt from 'jsonwebtoken';
 
 export const register = async (req: Request, res: Response) => {
   try {
@@ -34,6 +37,38 @@ export const register = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error(error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+export const login = async (req: Request, res: Response) => {
+  try {
+    const { email, password } = req.body;
+
+    // 1. Find user by email
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      return res.status(400).json({ message: 'Invalid credentials' });
+    }
+
+    // 2. Check password
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: 'Invalid credentials' });
+    }
+
+    // 3. Create JWT
+    const token = jwt.sign(
+      { userId: user.id, role: user.role },
+      process.env.JWT_SECRET!,
+      { expiresIn: '1d' }
+    );
+
+    res.status(200).json({
+      token,
+      user: { id: user.id, name: user.name, role: user.role }
+    });
+  } catch (error) {
     res.status(500).json({ message: 'Internal server error' });
   }
 };
