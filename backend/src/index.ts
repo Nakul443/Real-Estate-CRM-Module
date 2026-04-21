@@ -7,6 +7,7 @@ import clientRoutes from './routes/clientRoutes.js';
 import interactionRoutes from './routes/interactionRoutes.js';
 import dealRoutes from './routes/dealRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
+import taskRoutes from './routes/taskRoutes.js';
 
 const app = express();
 
@@ -22,6 +23,7 @@ app.use('/api/clients', clientRoutes);
 app.use('/api/interactions', interactionRoutes);
 app.use('/api/deals', dealRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/tasks', taskRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
