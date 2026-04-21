@@ -10,22 +10,35 @@ export const createProperty = async (req: Request, res: Response) => {
       price, 
       size, 
       type, 
-      amenities, 
-      images 
+      amenities 
     } = req.body;
 
-    // agentId is extracted from the JWT via your auth middleware
     const agentId = (req as any).user.userId;
+
+    // Extract Cloudinary URLs from the uploaded files 
+    const files = req.files as Express.Multer.File[];
+    const imageUrls = files ? files.map(file => file.path) : [];
+
+    const parsedPrice = Number.parseFloat(String(price));
+    if (!Number.isFinite(parsedPrice)) {
+      return res.status(400).json({ message: 'Price must be a number' });
+    }
+
+    const normalizedSize = typeof size === 'string' ? size.trim() : String(size ?? '').trim();
+    if (!normalizedSize) {
+      return res.status(400).json({ message: 'Size is required' });
+    }
 
     const property = await prisma.property.create({
       data: {
         title,
         location,
-        price,
-        size,
-        type, // e.g., "Residential" or "Commercial" [cite: 19]
+        // Multer sends form-data as strings, so we convert them to numbers
+        price: parsedPrice,
+        size: normalizedSize,
+        type, 
         amenities,
-        images, // Array of image URLs [cite: 20, 25]
+        images: imageUrls, // Store the array of Cloudinary URLs [cite: 20, 25]
         agentId,
       },
     });
@@ -49,6 +62,7 @@ export const getProperties = async (req: Request, res: Response) => {
 
     const min = minPrice === undefined ? undefined : Number.parseFloat(String(minPrice));
     const max = maxPrice === undefined ? undefined : Number.parseFloat(String(maxPrice));
+    
     if (minPrice !== undefined && !Number.isFinite(min)) {
       return res.status(400).json({ message: 'minPrice must be a number' });
     }
@@ -67,7 +81,7 @@ export const getProperties = async (req: Request, res: Response) => {
       where,
       include: {
         agent: {
-          select: { name: true, email: true }, // Links properties with agents [cite: 22]
+          select: { name: true, email: true }, // [cite: 22]
         },
       },
       orderBy: { id: 'desc' },
@@ -94,14 +108,26 @@ export const updateProperty = async (req: Request, res: Response) => {
 
     if (!property) return res.status(404).json({ message: 'Property not found' });
     
-    // Security: Only owner or Admin can update
     if (role !== 'ADMIN' && property.agentId !== userId) {
       return res.status(403).json({ message: 'Not authorized to update this property' });
     }
 
+    // Prepare data for update
+    const updateData = { ...req.body };
+    
+    // If new images are uploaded during update, add them to the data
+    const files = req.files as Express.Multer.File[];
+    if (files && files.length > 0) {
+      updateData.images = files.map(file => file.path);
+    }
+
+    // Ensure numeric values are correctly parsed if they exist in req.body
+    if (updateData.price) updateData.price = parseFloat(updateData.price);
+    if (updateData.size) updateData.size = parseFloat(updateData.size);
+
     const updated = await prisma.property.update({
       where: { id },
-      data: req.body,
+      data: updateData,
     });
 
     res.status(200).json(updated);
