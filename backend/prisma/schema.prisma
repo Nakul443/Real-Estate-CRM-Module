@@ -69,9 +69,10 @@ model Lead {
 model Property {
   id          String         @id @default(uuid())
   title       String
+  description String
   location    String         // [cite: 20]
   price       Float
-  size        String
+  size        Float
   type        String         // Residential/Commercial [cite: 19]
   amenities   String?
   images      String[]       // Array of URLs [cite: 25]
