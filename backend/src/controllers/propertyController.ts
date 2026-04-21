@@ -7,7 +7,7 @@ export const createProperty = async (req: Request, res: Response) => {
   try {
     const { 
       title, 
-      description, // Added to match your schema update
+      description,
       location, 
       price, 
       size, 
@@ -19,7 +19,6 @@ export const createProperty = async (req: Request, res: Response) => {
 
     const agentId = (req as any).user.userId;
 
-    // Extract Cloudinary URLs from the uploaded files 
     const files = req.files as Express.Multer.File[];
     const imageUrls = files ? files.map(file => file.path) : [];
 
@@ -36,12 +35,12 @@ export const createProperty = async (req: Request, res: Response) => {
     const property = await prisma.property.create({
       data: {
         title,
-        description, // Included from schema
+        description,
         location,
         price: parsedPrice,
         size: normalizedSize,
-        latitude: latitude ? parseFloat(latitude) : null, // Added coordinate handling
-        longitude: longitude ? parseFloat(longitude) : null, // Added coordinate handling
+        latitude: latitude ? parseFloat(latitude) : null,
+        longitude: longitude ? parseFloat(longitude) : null,
         type, 
         amenities,
         images: imageUrls, 
@@ -58,9 +57,18 @@ export const createProperty = async (req: Request, res: Response) => {
 
 export const getProperties = async (req: Request, res: Response) => {
   try {
-    const { type, minPrice, maxPrice, location } = req.query;
+    const { type, minPrice, maxPrice, location, lat, lng, radius } = req.query;
 
-    const where: Prisma.PropertyWhereInput = {};
+    const where: Prisma.PropertyWhereInput = {
+      latitude: {
+        gte: 0,
+        lte: 0
+      },
+      longitude: {
+        gte: 0,
+        lte: 0
+      }
+    };
     if (typeof type === 'string' && type.length > 0) where.type = type;
     if (typeof location === 'string' && location.length > 0) {
       where.location = { contains: location, mode: 'insensitive' };
@@ -81,6 +89,27 @@ export const getProperties = async (req: Request, res: Response) => {
       if (min !== undefined) price.gte = min;
       if (max !== undefined) price.lte = max;
       where.price = price;
+    }
+
+    // If coordinates and a radius (in km) are provided, filter within that area
+    if (lat && lng && radius) {
+      const centerLat = Number.parseFloat(String(lat));
+      const centerLng = Number.parseFloat(String(lng));
+      const radKm = Number.parseFloat(String(radius));
+
+      if (Number.isFinite(centerLat) && Number.isFinite(centerLng) && Number.isFinite(radKm)) {
+        // Approximate conversion: 1 degree latitude is ~111km
+        const degreeOffset = radKm / 111;
+
+        where.latitude = {
+          gte: centerLat - degreeOffset,
+          lte: centerLat + degreeOffset,
+        };
+        where.longitude = {
+          gte: centerLng - degreeOffset,
+          lte: centerLng + degreeOffset,
+        };
+      }
     }
 
     const properties = await prisma.property.findMany({
