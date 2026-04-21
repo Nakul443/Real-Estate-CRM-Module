@@ -5,6 +5,7 @@ import leadRoutes from './routes/leadRoutes.js';
 import propertyRoutes from './routes/propertyRoutes.js';
 import clientRoutes from './routes/clientRoutes.js';
 import interactionRoutes from './routes/interactionRoutes.js';
+import dealRoutes from './routes/dealRoutes.js';
 
 const app = express();
 
@@ -18,6 +19,7 @@ app.use('/api/leads', leadRoutes);
 app.use('/api/properties', propertyRoutes);
 app.use('/api/clients', clientRoutes);
 app.use('/api/interactions', interactionRoutes);
+app.use('/api/deals', dealRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
