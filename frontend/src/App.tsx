@@ -1,9 +1,15 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
+import Login from './pages/Login';
+import Layout from './components/Layout'; // Import our new Layout
 
-// These are "Shell" components we will build next
-const Login = () => <div className="p-10 text-center">Login Page (Coming Next)</div>;
-const Dashboard = () => <div className="p-10 text-center">Dashboard (Phase 3)</div>;
+// Placeholder components
+const Dashboard = () => (
+  <div className="space-y-4">
+    <h1 className="text-2xl font-bold">Dashboard Overview</h1>
+    <p className="text-gray-600">Welcome to your Real Estate CRM. Analytics coming soon.</p>
+  </div>
+);
 
 function App() {
   const { token } = useAuthStore();
@@ -11,16 +17,24 @@ function App() {
   return (
     <Router>
       <Routes>
-        {/* Public Route */}
+        {/* Public Route: If logged in, redirect away from login to dashboard */}
         <Route path="/login" element={!token ? <Login /> : <Navigate to="/" />} />
 
-        {/* Protected Routes (Only for logged-in users) */}
+        {/* Protected Route: Wrapped in our Layout */}
         <Route 
           path="/" 
-          element={token ? <Dashboard /> : <Navigate to="/login" />} 
+          element={
+            token ? (
+              <Layout>
+                <Dashboard />
+              </Layout>
+            ) : (
+              <Navigate to="/login" />
+            )
+          } 
         />
 
-        {/* Fallback */}
+        {/* Fallback to Dashboard/Login */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </Router>
