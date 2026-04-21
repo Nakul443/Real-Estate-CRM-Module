@@ -1,9 +1,11 @@
 // logic to create and retrive leads
 // should be linked to the agent who created the lead
+// also needs to trigger the n8n webhook for automated follow-ups and reminders
 
 import type { Request, Response } from 'express';
 import { prisma } from '../utils/prisma.js';
 import { LeadStatus } from '../../generated/prisma/index.js';
+import { triggerLeadWebhook } from '../utils/webhook.js'; // Import the n8n utility
 
 type AuthedRequest = Request & {
   user?: {
@@ -55,6 +57,10 @@ export const createLead = async (req: Request, res: Response) => {
         agentId: userId,
       },
     });
+
+    // TRIGGER AUTOMATION: Notify n8n for automated follow-up emails/reminders
+    // We wrap this in a non-blocking call so the user gets a response even if n8n is slow
+    triggerLeadWebhook(lead).catch(err => console.error("Webhook Background Error:", err));
 
     res.status(201).json(lead);
   } catch (error) {
