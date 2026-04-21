@@ -9,7 +9,8 @@ import { useAuthStore } from './store/authStore';
 import Login from './pages/Login';
 import Layout from './components/Layout';
 import StatCard from './components/StatCard';
-import Leads from './pages/Leads'; // This connects our new Leads table
+import Leads from './pages/Leads';
+import Properties from './pages/Properties';
 import { Users, Building2, TrendingUp, Clock } from 'lucide-react';
 
 // Dashboard component: The home screen showing high-level stats
@@ -90,6 +91,19 @@ function App() {
             token ? (
               <Layout>
                 <Leads />
+              </Layout>
+            ) : (
+              <Navigate to="/login" />
+            )
+          } 
+        />
+
+        <Route 
+          path="/properties" 
+          element={
+            token ? (
+              <Layout>
+                <Properties />
               </Layout>
             ) : (
               <Navigate to="/login" />
