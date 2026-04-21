@@ -1,8 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client-js"
   output   = "../generated/prisma"
@@ -39,15 +37,16 @@ enum DealStage {
 }
 
 model User {
-  id           String     @id @default(uuid())
-  email        String     @unique
+  id           String        @id @default(uuid())
+  email        String        @unique
   password     String
   name         String
-  role         Role       @default(AGENT)
+  role         Role          @default(AGENT)
   leads        Lead[]
   properties   Property[]
   deals        Deal[]
   interactions Interaction[]
+  tasks        Task[]        // Track agent task assignments [cite: 62]
 }
 
 model Lead {
@@ -71,6 +70,8 @@ model Property {
   title       String
   description String
   location    String         // [cite: 20]
+  latitude    Float?         // Added for Map Integration 
+  longitude   Float?         // Added for Map Integration 
   price       Float
   size        Float
   type        String         // Residential/Commercial [cite: 19]
@@ -83,14 +84,14 @@ model Property {
 }
 
 model Client {
-  id          String        @id @default(uuid())
-  name        String
-  phone       String
-  email       String?
-  type        String        // Buyer/Seller [cite: 30]
-  lead        Lead?         @relation(fields: [leadId], references: [id])
-  leadId      String?
-  deals       Deal[]
+  id           String        @id @default(uuid())
+  name         String
+  phone        String
+  email        String?
+  type         String        // Buyer/Seller [cite: 30]
+  lead         Lead?         @relation(fields: [leadId], references: [id])
+  leadId       String?
+  deals        Deal[]
   interactions Interaction[]
 }
 
@@ -99,6 +100,7 @@ model Deal {
   stage            DealStage @default(NEGOTIATION)
   commissionAmount Float?    // [cite: 42, 45]
   closingDate      DateTime?
+  documents        String[]  // Array of URLs for agreements/contracts 
   client           Client    @relation(fields: [clientId], references: [id])
   clientId         String
   property         Property  @relation(fields: [propertyId], references: [id])
@@ -117,4 +119,16 @@ model Interaction {
   clientId  String
   agent     User     @relation(fields: [agentId], references: [id])
   agentId   String
+}
+
+// Added for Task assignment and Notifications 
+model Task {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  dueDate     DateTime
+  isCompleted Boolean  @default(false)
+  agent       User     @relation(fields: [agentId], references: [id])
+  agentId     String
+  createdAt   DateTime @default(now())
 }

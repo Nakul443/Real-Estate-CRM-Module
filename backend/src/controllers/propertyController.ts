@@ -1,16 +1,20 @@
 import type { Request, Response } from 'express';
 import { prisma } from '../utils/prisma.js';
 import type { Prisma } from '../../generated/prisma/index.js';
+import { string } from 'zod';
 
 export const createProperty = async (req: Request, res: Response) => {
   try {
     const { 
       title, 
+      description, // Added to match your schema update
       location, 
       price, 
       size, 
       type, 
-      amenities 
+      amenities,
+      latitude,
+      longitude
     } = req.body;
 
     const agentId = (req as any).user.userId;
@@ -32,13 +36,15 @@ export const createProperty = async (req: Request, res: Response) => {
     const property = await prisma.property.create({
       data: {
         title,
+        description, // Included from schema
         location,
-        // Multer sends form-data as strings, so we convert them to numbers
         price: parsedPrice,
         size: normalizedSize,
+        latitude: latitude ? parseFloat(latitude) : null, // Added coordinate handling
+        longitude: longitude ? parseFloat(longitude) : null, // Added coordinate handling
         type, 
         amenities,
-        images: imageUrls, // Store the array of Cloudinary URLs [cite: 20, 25]
+        images: imageUrls, 
         agentId,
       },
     });
@@ -112,18 +118,18 @@ export const updateProperty = async (req: Request, res: Response) => {
       return res.status(403).json({ message: 'Not authorized to update this property' });
     }
 
-    // Prepare data for update
     const updateData = { ...req.body };
     
-    // If new images are uploaded during update, add them to the data
     const files = req.files as Express.Multer.File[];
     if (files && files.length > 0) {
       updateData.images = files.map(file => file.path);
     }
 
-    // Ensure numeric values are correctly parsed if they exist in req.body
+    // Ensure all numeric/float values are parsed correctly
     if (updateData.price) updateData.price = parseFloat(updateData.price);
     if (updateData.size) updateData.size = parseFloat(updateData.size);
+    if (updateData.latitude) updateData.latitude = parseFloat(updateData.latitude); // Added
+    if (updateData.longitude) updateData.longitude = parseFloat(updateData.longitude); // Added
 
     const updated = await prisma.property.update({
       where: { id },
