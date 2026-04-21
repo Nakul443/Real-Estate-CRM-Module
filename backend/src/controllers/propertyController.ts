@@ -81,7 +81,7 @@ export const getProperties = async (req: Request, res: Response) => {
       where,
       include: {
         agent: {
-          select: { name: true, email: true }, // [cite: 22]
+          select: { name: true, email: true },
         },
       },
       orderBy: { id: 'desc' },

@@ -37,10 +37,10 @@ export const updateDealStage = async (req: Request, res: Response) => {
 
     const updatedDeal = await prisma.deal.update({
       where: { id },
-      data: { 
+      data: {
         stage: stage !== undefined ? stage : undefined,
         // Convert undefined to null to satisfy exactOptionalPropertyTypes
-        closingDate: closingDate ? new Date(closingDate) : null 
+        closingDate: closingDate ? new Date(closingDate) : null
       },
     });
 

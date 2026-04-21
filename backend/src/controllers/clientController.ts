@@ -10,8 +10,8 @@ export const createClient = async (req: Request, res: Response) => {
         name,
         phone,
         email,
-        type, // "Buyer" or "Seller" [cite: 30]
-        leadId: leadId || null, // Link to the original lead [cite: 36]
+        type, // "Buyer" or "Seller"
+        leadId: leadId || null, // Link to the original lead
       },
     });
 
