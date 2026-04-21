@@ -11,6 +11,7 @@ import Layout from './components/Layout';
 import StatCard from './components/StatCard';
 import Leads from './pages/Leads';
 import Properties from './pages/Properties';
+import Tasks from './pages/Tasks';
 import { Users, Building2, TrendingUp, Clock } from 'lucide-react';
 
 // Dashboard component: The home screen showing high-level stats
@@ -104,6 +105,19 @@ function App() {
             token ? (
               <Layout>
                 <Properties />
+              </Layout>
+            ) : (
+              <Navigate to="/login" />
+            )
+          } 
+        />
+
+        <Route 
+          path="/tasks" 
+          element={
+            token ? (
+              <Layout>
+                <Tasks />
               </Layout>
             ) : (
               <Navigate to="/login" />
