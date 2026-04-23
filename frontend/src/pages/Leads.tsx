@@ -4,7 +4,7 @@
 // also includes modal integration for adding new leads
 
 import React, { useState, useEffect } from 'react';
-import { Mail, Phone, MoreVertical, Plus, Search, Loader2, AlertCircle, Filter } from 'lucide-react';
+import { Mail, Phone, MoreVertical, Plus, Search, Loader2, AlertCircle, Filter, Edit, Trash2 } from 'lucide-react';
 import api from '../utils/api'; // Ensure you have created the api utility in src/utils/api.ts
 import AddLeadModal from '../components/AddLeadModal'; // IMPORTANT: New Modal Import
 
@@ -14,8 +14,13 @@ const Leads = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // --- NEW STATE FOR DROPDOWN CONTROL ---
+  // We track the ID of the lead whose menu is open. If null, no menu is open.
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+
   // --- NEW STATE FOR MODAL CONTROL ---
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedLead, setSelectedLead] = useState<any>(null); // To store lead for editing
 
   // Fetch real leads from the backend on component mount
   // Moved into a named function so we can trigger a refresh after adding a lead
@@ -36,6 +41,22 @@ const Leads = () => {
   useEffect(() => {
     fetchLeads();
   }, []);
+
+  // --- DELETE LOGIC ---
+  const handleDeleteLead = async (id: string) => {
+    if (window.confirm("Are you sure you want to delete this lead? It will also unlink associated clients.")) {
+      try {
+        await api.delete(`/leads/${id}`);
+        fetchLeads(); 
+        setActiveMenuId(null);
+      } catch (err: any) {
+        console.error("Error deleting lead:", err);
+        // Show the actual error from the backend (the "Nuclear" logic error)
+        const errorMsg = err.response?.data?.message || "Failed to delete lead.";
+        alert(errorMsg);
+      }
+    }
+  };
 
   // Filter logic for the search bar
   const filteredLeads = leads.filter((lead: any) => 
@@ -66,7 +87,10 @@ const Leads = () => {
         </div>
         {/* OPEN MODAL ON CLICK */}
         <button 
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => {
+            setSelectedLead(null); // Reset for "Add" mode
+            setIsModalOpen(true);
+          }}
           className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-all shadow-md shadow-purple-100 font-medium"
         >
           <Plus size={20} />
@@ -95,7 +119,8 @@ const Leads = () => {
       </div>
 
       {/* Leads Table Content */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+      {/* FIXED: Removed overflow-hidden and added overflow-visible to the container */}
+      <div className="bg-white rounded-xl border border-gray-200 overflow-visible shadow-sm">
         {loading ? (
           <div className="flex flex-col items-center justify-center p-20 text-purple-600 bg-white">
             <Loader2 className="animate-spin mb-4" size={40} />
@@ -115,8 +140,9 @@ const Leads = () => {
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+            {/* FIXED: Changed to min-w-full and overflow-visible to prevent clipping */}
+            <div className="overflow-visible min-w-full">
+              <table className="w-full text-left border-separate border-spacing-0">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
                     <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Lead Info</th>
@@ -145,12 +171,12 @@ const Leads = () => {
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-sm text-gray-600 max-w-[200px] truncate">
-                           {lead.preference || 'General Inquiry'}
-                           {lead.budget && (
-                             <div className="text-[10px] text-purple-600 font-bold mt-1 uppercase tracking-tight">
-                               Budget: ${lead.budget.toLocaleString()}
-                             </div>
-                           )}
+                            {lead.preference || 'General Inquiry'}
+                            {lead.budget && (
+                              <div className="text-[10px] text-purple-600 font-bold mt-1 uppercase tracking-tight">
+                                Budget: ${lead.budget.toLocaleString()}
+                              </div>
+                            )}
                         </div>
                       </td>
                       <td className="px-6 py-4">
@@ -158,10 +184,40 @@ const Leads = () => {
                           {lead.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-right">
-                        <button className="text-gray-400 hover:text-gray-600 p-1 rounded-md hover:bg-gray-100 transition-colors">
+                      {/* --- UPDATED ACTION COLUMN WITH 3-DOTS LOGIC --- */}
+                      <td className="px-6 py-4 text-right relative overflow-visible">
+                        <button 
+                          onClick={() => setActiveMenuId(activeMenuId === lead.id ? null : lead.id)}
+                          className="text-gray-400 hover:text-gray-600 p-1 rounded-md hover:bg-gray-100 transition-colors"
+                        >
                           <MoreVertical size={20} />
                         </button>
+
+                        {activeMenuId === lead.id && (
+                          <>
+                            {/* Backdrop to close menu */}
+                            <div className="fixed inset-0 z-30" onClick={() => setActiveMenuId(null)}></div>
+                            {/* FIXED: Adjusted z-index and positioning to sit on top of everything */}
+                            <div className="absolute right-6 top-12 w-40 bg-white border border-gray-200 rounded-lg shadow-2xl z-40 py-1 text-left overflow-hidden">
+                              <button 
+                                onClick={() => { 
+                                  setSelectedLead(lead); // Load data for editing
+                                  setIsModalOpen(true); 
+                                  setActiveMenuId(null); 
+                                }}
+                                className="w-full px-4 py-2.5 text-xs font-bold text-gray-700 hover:bg-purple-50 hover:text-purple-600 flex items-center gap-2 transition-colors"
+                              >
+                                <Edit size={14} /> Edit Lead
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteLead(lead.id)}
+                                className="w-full px-4 py-2.5 text-xs font-bold text-red-600 hover:bg-red-50 flex items-center gap-2 border-t border-gray-50 transition-colors"
+                              >
+                                <Trash2 size={14} /> Delete Lead
+                              </button>
+                            </div>
+                          </>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -181,11 +237,15 @@ const Leads = () => {
         )}
       </div>
 
-      {/* --- ADD LEAD MODAL COMPONENT --- */}
+      {/* --- ADD/EDIT LEAD MODAL COMPONENT --- */}
       <AddLeadModal 
         isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedLead(null);
+        }} 
         onSuccess={fetchLeads} // Triggers data re-fetch on success
+        initialData={selectedLead} // Pass selected lead data
       />
     </div>
   );

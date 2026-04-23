@@ -3,7 +3,7 @@
 // uses the first image from the storage array as the cover
 
 import React, { useState, useEffect } from 'react';
-import { Building2, MapPin, Tag, Plus, MoreVertical, Loader2 } from 'lucide-react';
+import { Building2, MapPin, Tag, Plus, MoreVertical, Loader2, Edit, Trash2 } from 'lucide-react';
 import api from '../utils/api';
 // We need to import a modal here! (I'll assume you create AddPropertyModal.tsx next)
 import AddPropertyModal from '../components/AddPropertyModal'; 
@@ -12,6 +12,9 @@ const Properties = () => {
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false); // Modal state added
+
+  // --- NEW STATE FOR DROPDOWN CONTROL ---
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
 
   // Fetch properties from the backend
   const fetchProperties = async () => {
@@ -65,8 +68,8 @@ const Properties = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {properties.map((property: any) => (
-            <div key={property.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-              <div className="h-48 overflow-hidden relative bg-gray-100">
+            <div key={property.id} className="bg-white rounded-xl border border-gray-200 overflow-visible shadow-sm hover:shadow-md transition-shadow">
+              <div className="h-48 overflow-hidden relative bg-gray-100 rounded-t-xl">
                 {property.images && property.images.length > 0 ? (
                   <img 
                     src={property.images[0]} 
@@ -88,12 +91,33 @@ const Properties = () => {
                   <div>
                     <h3 className="text-lg font-bold text-gray-900 truncate max-w-[200px]">{property.title}</h3>
                     <p className="text-sm text-gray-500 flex items-center gap-1 mt-1">
-                      <MapPin size={14} /> {property.location}
+                      <span className="shrink-0"><MapPin size={14} /></span> {property.location}
                     </p>
                   </div>
-                  <button className="text-gray-400 hover:text-gray-600">
-                    <MoreVertical size={20} />
-                  </button>
+                  
+                  {/* --- DROPDOWN ACTION MENU --- */}
+                  <div className="relative">
+                    <button 
+                      onClick={() => setActiveMenuId(activeMenuId === property.id ? null : property.id)}
+                      className="text-gray-400 hover:text-gray-600 p-1 rounded-md hover:bg-gray-100"
+                    >
+                      <MoreVertical size={20} />
+                    </button>
+
+                    {activeMenuId === property.id && (
+                      <>
+                        <div className="fixed inset-0 z-10" onClick={() => setActiveMenuId(null)}></div>
+                        <div className="absolute right-0 mt-2 w-36 bg-white border border-gray-200 rounded-lg shadow-xl z-20 py-1 overflow-hidden">
+                          <button className="w-full px-4 py-2 text-xs font-bold text-gray-700 hover:bg-purple-50 flex items-center gap-2">
+                            <Edit size={14} /> Edit Listing
+                          </button>
+                          <button className="w-full px-4 py-2 text-xs font-bold text-red-600 hover:bg-red-50 flex items-center gap-2 border-t border-gray-50">
+                            <Trash2 size={14} /> Remove
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
 
                 <div className="mt-4 flex items-center justify-between border-t pt-4">
