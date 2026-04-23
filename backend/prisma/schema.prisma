@@ -8,6 +8,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 enum Role {
@@ -28,6 +29,7 @@ enum PropertyStatus {
   AVAILABLE
   SOLD
   RENTED
+  PENDING
 }
 
 enum DealStage {
@@ -46,7 +48,7 @@ model User {
   properties   Property[]
   deals        Deal[]
   interactions Interaction[]
-  tasks        Task[]        // Track agent task assignments [cite: 62]
+  tasks        Task[]        // Track agent task assignments
 }
 
 model Lead {
@@ -56,12 +58,12 @@ model Lead {
   email        String?
   budget       Float?
   preference   String?
-  source       String?    // e.g., Website, Ads [cite: 6]
+  source       String?    // e.g., Website, Ads
   status       LeadStatus @default(NEW)
   agent        User       @relation(fields: [agentId], references: [id])
   agentId      String
   clients      Client[]
-  followUpDate DateTime?  // For reminders [cite: 10]
+  followUpDate DateTime?  // For reminders
   createdAt    DateTime   @default(now())
 }
 
@@ -69,14 +71,14 @@ model Property {
   id          String         @id @default(uuid())
   title       String
   description String
-  location    String         // [cite: 20]
+  location    String         //
   latitude    Float?         // Added for Map Integration 
   longitude   Float?         // Added for Map Integration 
   price       Float
   size        Float
-  type        String         // Residential/Commercial [cite: 19]
+  type        String         // Residential/Commercial
   amenities   String?
-  images      String[]       // Array of URLs [cite: 25]
+  images      String[]       // Array of URLs
   status      PropertyStatus @default(AVAILABLE)
   agent       User           @relation(fields: [agentId], references: [id])
   agentId     String
@@ -88,7 +90,7 @@ model Client {
   name         String
   phone        String
   email        String?
-  type         String        // Buyer/Seller [cite: 30]
+  type         String        // Buyer/Seller
   lead         Lead?         @relation(fields: [leadId], references: [id])
   leadId       String?
   deals        Deal[]
@@ -98,7 +100,7 @@ model Client {
 model Deal {
   id               String    @id @default(uuid())
   stage            DealStage @default(NEGOTIATION)
-  commissionAmount Float?    // [cite: 42, 45]
+  commissionAmount Float?    //
   closingDate      DateTime?
   documents        String[]  // Array of URLs for agreements/contracts 
   client           Client    @relation(fields: [clientId], references: [id])
@@ -112,7 +114,7 @@ model Deal {
 
 model Interaction {
   id        String   @id @default(uuid())
-  type      String   // Call, SMS, Email [cite: 50]
+  type      String   // Call, SMS, Email
   notes     String?
   timestamp DateTime @default(now())
   client    Client   @relation(fields: [clientId], references: [id])

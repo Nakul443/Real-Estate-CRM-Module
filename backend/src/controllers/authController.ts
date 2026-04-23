@@ -1,4 +1,4 @@
-// file containing all the logic for APIs
+// file containing all the register and login logic for APIs
 
 import type { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
@@ -58,17 +58,24 @@ export const login = async (req: Request, res: Response) => {
     }
 
     // 3. Create JWT
+    // We include email and role so the frontend store can use them immediately
     const token = jwt.sign(
-      { userId: user.id, role: user.role },
+      { userId: user.id, email: user.email, role: user.role },
       process.env.JWT_SECRET!,
       { expiresIn: '1d' }
     );
 
     res.status(200).json({
       token,
-      user: { id: user.id, name: user.name, role: user.role }
+      user: { 
+        id: user.id, 
+        name: user.name, 
+        email: user.email,
+        role: user.role 
+      }
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };

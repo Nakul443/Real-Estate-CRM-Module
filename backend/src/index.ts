@@ -1,3 +1,5 @@
+// entry point for the node.js express server
+
 import express from 'express';
 import cors from 'cors';
 import authRoutes from './routes/authRoutes.js';
@@ -8,6 +10,10 @@ import interactionRoutes from './routes/interactionRoutes.js';
 import dealRoutes from './routes/dealRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
 import taskRoutes from './routes/taskRoutes.js';
+import dotenv from 'dotenv';
+
+// Load environment variables (DB URL, JWT Secret, etc.)
+dotenv.config();
 
 const app = express();
 
@@ -26,6 +32,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/tasks', taskRoutes);
 
 const PORT = process.env.PORT || 5000;
+
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });

@@ -42,7 +42,9 @@ export const getMyTasks = async (req: Request, res: Response) => {
 
 export const toggleTaskStatus = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const rawId = (req.params as any).id as string | string[] | undefined;
+    const id = Array.isArray(rawId) ? rawId[0] : rawId;
+    if (!id) return res.status(400).json({ message: 'Task id is required' });
     
     const task = await prisma.task.findUnique({ where: { id } });
     if (!task) return res.status(404).json({ message: 'Task not found' });

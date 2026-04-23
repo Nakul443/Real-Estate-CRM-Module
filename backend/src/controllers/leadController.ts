@@ -2,24 +2,20 @@
 // should be linked to the agent who created the lead
 // also needs to trigger the n8n webhook for automated follow-ups and reminders
 
-import type { Request, Response } from 'express';
+import type { Response } from 'express';
 import { prisma } from '../utils/prisma.js';
 import { LeadStatus } from '../../generated/prisma/index.js';
 import { triggerLeadWebhook } from '../utils/webhook.js'; // Import the n8n utility
+import type { AuthRequest } from '../middlewares/authMiddleware.js';
 
-type AuthedRequest = Request & {
-  user?: {
-    userId: string;
-    role: string;
-  };
-};
-
-export const createLead = async (req: Request, res: Response) => {
+export const createLead = async (req: AuthRequest, res: Response) => {
   try {
     const { name, email, phone, status, budget, preference, source, followUpDate } = req.body ?? {};
-    const userId = (req as AuthedRequest).user?.userId; // Taken from JWT via authenticate middleware
+    const userId = req.user?.userId; // Taken from JWT via authenticate middleware
 
     if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+    
+    // Basic validation
     if (typeof name !== 'string' || name.trim().length === 0) {
       return res.status(400).json({ message: 'Name is required' });
     }
@@ -27,8 +23,10 @@ export const createLead = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Phone is required' });
     }
 
+    // Data normalization
     const normalizedBudget =
       budget === undefined || budget === null ? undefined : Number.isFinite(Number(budget)) ? Number(budget) : NaN;
+    
     if (Number.isNaN(normalizedBudget)) {
       return res.status(400).json({ message: 'Budget must be a number' });
     }
@@ -40,6 +38,7 @@ export const createLead = async (req: Request, res: Response) => {
 
     const normalizedFollowUpDate =
       followUpDate === undefined || followUpDate === null ? null : new Date(String(followUpDate));
+    
     if (normalizedFollowUpDate && Number.isNaN(normalizedFollowUpDate.getTime())) {
       return res.status(400).json({ message: 'Invalid followUpDate' });
     }
@@ -53,7 +52,7 @@ export const createLead = async (req: Request, res: Response) => {
         preference: typeof preference === 'string' && preference.trim().length > 0 ? preference.trim() : null,
         source: typeof source === 'string' && source.trim().length > 0 ? source.trim() : null,
         followUpDate: normalizedFollowUpDate,
-        status: (normalizedStatus as (typeof LeadStatus)[keyof typeof LeadStatus]) ?? LeadStatus.NEW,
+        status: (normalizedStatus as LeadStatus) ?? LeadStatus.NEW,
         agentId: userId,
       },
     });
@@ -64,14 +63,15 @@ export const createLead = async (req: Request, res: Response) => {
 
     res.status(201).json(lead);
   } catch (error) {
+    console.error("Create Lead Error:", error);
     res.status(500).json({ message: 'Failed to create lead' });
   }
 };
 
-export const getLeads = async (req: Request, res: Response) => {
+export const getLeads = async (req: AuthRequest, res: Response) => {
   try {
-    const userId = (req as AuthedRequest).user?.userId;
-    const role = (req as AuthedRequest).user?.role;
+    const userId = req.user?.userId;
+    const role = req.user?.role;
 
     if (!userId || !role) return res.status(401).json({ message: 'Unauthorized' });
 
@@ -79,22 +79,29 @@ export const getLeads = async (req: Request, res: Response) => {
     const leads = await prisma.lead.findMany({
       where: role === 'ADMIN' ? {} : { agentId: userId },
       orderBy: { createdAt: 'desc' },
+      include: {
+        agent: {
+          select: { name: true }
+        }
+      }
     });
 
     res.status(200).json(leads);
   } catch (error) {
+    console.error("Fetch Leads Error:", error);
     res.status(500).json({ message: 'Failed to fetch leads' });
   }
 };
 
-export const updateLeadStatus = async (req: Request, res: Response) => {
+export const updateLeadStatus = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { status } = req.body ?? {};
-    const userId = (req as AuthedRequest).user?.userId;
-    const role = (req as AuthedRequest).user?.role;
+    const userId = req.user?.userId;
+    const role = req.user?.role;
 
     if (!userId || !role) return res.status(401).json({ message: 'Unauthorized' });
+    
     if (typeof id !== 'string' || id.trim().length === 0) {
       return res.status(400).json({ message: 'Invalid lead id' });
     }
@@ -104,7 +111,7 @@ export const updateLeadStatus = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Invalid status' });
     }
 
-    // First, verify ownership unless the user is an ADMIN
+    // First, verify existence and ownership unless the user is an ADMIN
     const lead = await prisma.lead.findUnique({ where: { id } });
 
     if (!lead) return res.status(404).json({ message: 'Lead not found' });
@@ -115,11 +122,12 @@ export const updateLeadStatus = async (req: Request, res: Response) => {
 
     const updatedLead = await prisma.lead.update({
       where: { id },
-      data: { status: normalizedStatus as (typeof LeadStatus)[keyof typeof LeadStatus] },
+      data: { status: normalizedStatus as LeadStatus },
     });
 
     res.status(200).json(updatedLead);
   } catch (error) {
+    console.error("Update Lead Status Error:", error);
     res.status(500).json({ message: 'Failed to update lead' });
   }
 };

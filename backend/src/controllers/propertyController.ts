@@ -1,9 +1,9 @@
-import type { Request, Response } from 'express';
+import type { Response } from 'express';
 import { prisma } from '../utils/prisma.js';
 import type { Prisma } from '../../generated/prisma/index.js';
-import { string } from 'zod';
+import type { AuthRequest } from '../middlewares/authMiddleware.js';
 
-export const createProperty = async (req: Request, res: Response) => {
+export const createProperty = async (req: AuthRequest, res: Response) => {
   try {
     const { 
       title, 
@@ -14,11 +14,13 @@ export const createProperty = async (req: Request, res: Response) => {
       type, 
       amenities,
       latitude,
-      longitude
+      longitude,
     } = req.body;
 
-    const agentId = (req as any).user.userId;
+    const agentId = req.user?.userId;
+    if (!agentId) return res.status(401).json({ message: 'Unauthorized' });
 
+    // Handling images uploaded via Multer
     const files = req.files as Express.Multer.File[];
     const imageUrls = files ? files.map(file => file.path) : [];
 
@@ -31,6 +33,25 @@ export const createProperty = async (req: Request, res: Response) => {
     if (!normalizedSize) {
       return res.status(400).json({ message: 'Size is required' });
     }
+    const parsedSize = Number.parseFloat(normalizedSize);
+    if (!Number.isFinite(parsedSize)) {
+      return res.status(400).json({ message: 'Size must be a number' });
+    }
+
+    const parsedLatitude =
+      latitude === undefined || latitude === null || latitude === ''
+        ? null
+        : Number.parseFloat(String(latitude));
+    const parsedLongitude =
+      longitude === undefined || longitude === null || longitude === ''
+        ? null
+        : Number.parseFloat(String(longitude));
+    if (parsedLatitude !== null && !Number.isFinite(parsedLatitude)) {
+      return res.status(400).json({ message: 'Latitude must be a number' });
+    }
+    if (parsedLongitude !== null && !Number.isFinite(parsedLongitude)) {
+      return res.status(400).json({ message: 'Longitude must be a number' });
+    }
 
     const property = await prisma.property.create({
       data: {
@@ -38,9 +59,9 @@ export const createProperty = async (req: Request, res: Response) => {
         description,
         location,
         price: parsedPrice,
-        size: normalizedSize,
-        latitude: latitude ? parseFloat(latitude) : null,
-        longitude: longitude ? parseFloat(longitude) : null,
+        size: parsedSize,
+        latitude: parsedLatitude,
+        longitude: parsedLongitude,
         type, 
         amenities,
         images: imageUrls, 
@@ -55,21 +76,15 @@ export const createProperty = async (req: Request, res: Response) => {
   }
 };
 
-export const getProperties = async (req: Request, res: Response) => {
+export const getProperties = async (req: AuthRequest, res: Response) => {
   try {
     const { type, minPrice, maxPrice, location, lat, lng, radius } = req.query;
 
-    const where: Prisma.PropertyWhereInput = {
-      latitude: {
-        gte: 0,
-        lte: 0
-      },
-      longitude: {
-        gte: 0,
-        lte: 0
-      }
-    };
+    // Initialize where object without strict 0 coordinate filters
+    const where: Prisma.PropertyWhereInput = {};
+
     if (typeof type === 'string' && type.length > 0) where.type = type;
+    
     if (typeof location === 'string' && location.length > 0) {
       where.location = { contains: location, mode: 'insensitive' };
     }
@@ -85,13 +100,13 @@ export const getProperties = async (req: Request, res: Response) => {
     }
 
     if (min !== undefined || max !== undefined) {
-      const price: Prisma.FloatFilter<'Property'> = {};
-      if (min !== undefined) price.gte = min;
-      if (max !== undefined) price.lte = max;
-      where.price = price;
+      where.price = {
+        ...(min !== undefined ? { gte: min } : {}),
+        ...(max !== undefined ? { lte: max } : {}),
+      };
     }
 
-    // If coordinates and a radius (in km) are provided, filter within that area
+    // Radius Search logic (nautical/geospatial approximation)
     if (lat && lng && radius) {
       const centerLat = Number.parseFloat(String(lat));
       const centerLng = Number.parseFloat(String(lng));
@@ -129,20 +144,21 @@ export const getProperties = async (req: Request, res: Response) => {
   }
 };
 
-export const updateProperty = async (req: Request, res: Response) => {
+export const updateProperty = async (req: AuthRequest, res: Response) => {
   try {
-    const idParam = (req.params as { id?: unknown }).id;
-    if (typeof idParam !== 'string' || idParam.trim().length === 0) {
-      return res.status(400).json({ message: 'Invalid property id' });
-    }
-    const id = idParam;
-    const userId = (req as any).user.userId;
-    const role = (req as any).user.role;
+    const rawId = req.params.id;
+    const id = Array.isArray(rawId) ? rawId[0] : rawId;
+    if (!id) return res.status(400).json({ message: 'Property id is required' });
+    const userId = req.user?.userId;
+    const role = req.user?.role;
+
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
 
     const property = await prisma.property.findUnique({ where: { id } });
 
     if (!property) return res.status(404).json({ message: 'Property not found' });
     
+    // RBAC: Only admin or the listing agent can update
     if (role !== 'ADMIN' && property.agentId !== userId) {
       return res.status(403).json({ message: 'Not authorized to update this property' });
     }
@@ -154,11 +170,11 @@ export const updateProperty = async (req: Request, res: Response) => {
       updateData.images = files.map(file => file.path);
     }
 
-    // Ensure all numeric/float values are parsed correctly
+    // Ensure all numeric/float values are parsed correctly from strings (if sent via FormData)
     if (updateData.price) updateData.price = parseFloat(updateData.price);
     if (updateData.size) updateData.size = parseFloat(updateData.size);
-    if (updateData.latitude) updateData.latitude = parseFloat(updateData.latitude); // Added
-    if (updateData.longitude) updateData.longitude = parseFloat(updateData.longitude); // Added
+    if (updateData.latitude) updateData.latitude = parseFloat(updateData.latitude);
+    if (updateData.longitude) updateData.longitude = parseFloat(updateData.longitude);
 
     const updated = await prisma.property.update({
       where: { id },
@@ -167,19 +183,20 @@ export const updateProperty = async (req: Request, res: Response) => {
 
     res.status(200).json(updated);
   } catch (error) {
+    console.error(error);
     res.status(500).json({ message: 'Error updating property' });
   }
 };
 
-export const deleteProperty = async (req: Request, res: Response) => {
+export const deleteProperty = async (req: AuthRequest, res: Response) => {
   try {
-    const idParam = (req.params as { id?: unknown }).id;
-    if (typeof idParam !== 'string' || idParam.trim().length === 0) {
-      return res.status(400).json({ message: 'Invalid property id' });
-    }
-    const id = idParam;
-    const userId = (req as any).user.userId;
-    const role = (req as any).user.role;
+    const rawId = req.params.id;
+    const id = Array.isArray(rawId) ? rawId[0] : rawId;
+    if (!id) return res.status(400).json({ message: 'Property id is required' });
+    const userId = req.user?.userId;
+    const role = req.user?.role;
+
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
 
     const property = await prisma.property.findUnique({ where: { id } });
 
@@ -192,6 +209,7 @@ export const deleteProperty = async (req: Request, res: Response) => {
     await prisma.property.delete({ where: { id } });
     res.status(200).json({ message: 'Property deleted successfully' });
   } catch (error) {
+    console.error(error);
     res.status(500).json({ message: 'Error deleting property' });
   }
 };
