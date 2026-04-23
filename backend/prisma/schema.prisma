@@ -105,8 +105,8 @@ model Deal {
   documents        String[]  // Array of URLs for agreements/contracts 
   client           Client    @relation(fields: [clientId], references: [id])
   clientId         String
-  property         Property  @relation(fields: [propertyId], references: [id])
-  propertyId       String
+  property         Property?  @relation(fields: [propertyId], references: [id])
+  propertyId       String?
   agent            User      @relation(fields: [agentId], references: [id])
   agentId          String
   createdAt        DateTime  @default(now())

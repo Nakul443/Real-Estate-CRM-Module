@@ -9,5 +9,7 @@ router.post('/', authenticate, authorize(['ADMIN', 'AGENT']), upload.array('imag
 router.get('/', authenticate, getProperties);
 router.patch('/:id', authenticate, updateProperty);
 router.delete('/:id', authenticate, deleteProperty);
+router.put('/:id', authenticate, authorize(['ADMIN', 'AGENT']), upload.array('images', 5), updateProperty);
+router.delete('/:id', authenticate, deleteProperty);
 
 export default router;

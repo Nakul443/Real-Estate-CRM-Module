@@ -16,6 +16,9 @@ const Properties = () => {
   // --- NEW STATE FOR DROPDOWN CONTROL ---
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
 
+  // --- NEW STATE FOR EDITING ---
+  const [selectedProperty, setSelectedProperty] = useState<any>(null);
+
   // Fetch properties from the backend
   const fetchProperties = async () => {
     try {
@@ -32,6 +35,20 @@ const Properties = () => {
   useEffect(() => {
     fetchProperties();
   }, []);
+
+  // --- DELETE LOGIC ---
+  const handleDeleteProperty = async (id: string) => {
+    if (window.confirm("Are you sure you want to remove this listing? Associated deals will be unlinked.")) {
+      try {
+        await api.delete(`/properties/${id}`);
+        fetchProperties(); // Refresh the list
+        setActiveMenuId(null);
+      } catch (error: any) {
+        console.error("Delete error:", error);
+        alert(error.response?.data?.message || "Failed to delete property.");
+      }
+    }
+  };
 
   const getStatusStyle = (status: string) => {
     switch (status) {
@@ -52,7 +69,10 @@ const Properties = () => {
         </div>
         {/* ADDED onClick handler */}
         <button 
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => {
+            setSelectedProperty(null); // Clear selection for "New" mode
+            setIsModalOpen(true);
+          }}
           className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
         >
           <Plus size={20} />
@@ -108,10 +128,20 @@ const Properties = () => {
                       <>
                         <div className="fixed inset-0 z-10" onClick={() => setActiveMenuId(null)}></div>
                         <div className="absolute right-0 mt-2 w-36 bg-white border border-gray-200 rounded-lg shadow-xl z-20 py-1 overflow-hidden">
-                          <button className="w-full px-4 py-2 text-xs font-bold text-gray-700 hover:bg-purple-50 flex items-center gap-2">
+                          <button 
+                            onClick={() => {
+                              setSelectedProperty(property);
+                              setIsModalOpen(true);
+                              setActiveMenuId(null);
+                            }}
+                            className="w-full px-4 py-2 text-xs font-bold text-gray-700 hover:bg-purple-50 flex items-center gap-2"
+                          >
                             <Edit size={14} /> Edit Listing
                           </button>
-                          <button className="w-full px-4 py-2 text-xs font-bold text-red-600 hover:bg-red-50 flex items-center gap-2 border-t border-gray-50">
+                          <button 
+                            onClick={() => handleDeleteProperty(property.id)}
+                            className="w-full px-4 py-2 text-xs font-bold text-red-600 hover:bg-red-50 flex items-center gap-2 border-t border-gray-50"
+                          >
                             <Trash2 size={14} /> Remove
                           </button>
                         </div>
@@ -144,8 +174,12 @@ const Properties = () => {
       {/* MODAL INTEGRATION */}
       <AddPropertyModal 
         isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedProperty(null);
+        }} 
         onSuccess={fetchProperties}
+        initialData={selectedProperty}
       />
     </div>
   );

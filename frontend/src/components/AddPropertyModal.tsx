@@ -2,7 +2,7 @@
 // Validates numeric inputs for price and size before sending to Prisma
 // Supports status selection and basic property details
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Loader2, Home, MapPin, DollarSign, Maximize } from 'lucide-react';
 import api from '../utils/api';
 
@@ -10,9 +10,10 @@ interface AddPropertyModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  initialData?: any; // Added to support editing
 }
 
-const AddPropertyModal = ({ isOpen, onClose, onSuccess }: AddPropertyModalProps) => {
+const AddPropertyModal = ({ isOpen, onClose, onSuccess, initialData }: AddPropertyModalProps) => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
@@ -23,6 +24,31 @@ const AddPropertyModal = ({ isOpen, onClose, onSuccess }: AddPropertyModalProps)
     status: 'AVAILABLE',
     description: ''
   });
+
+  // Sync form data when initialData changes (for editing)
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        title: initialData.title || '',
+        location: initialData.location || '',
+        price: initialData.price?.toString() || '',
+        size: initialData.size?.toString() || '',
+        type: initialData.type || 'APARTMENT',
+        status: initialData.status || 'AVAILABLE',
+        description: initialData.description || ''
+      });
+    } else {
+      setFormData({
+        title: '',
+        location: '',
+        price: '',
+        size: '',
+        type: 'APARTMENT',
+        status: 'AVAILABLE',
+        description: ''
+      });
+    }
+  }, [initialData, isOpen]);
 
   if (!isOpen) return null;
 
@@ -36,26 +62,22 @@ const AddPropertyModal = ({ isOpen, onClose, onSuccess }: AddPropertyModalProps)
         ...formData,
         price: parseFloat(formData.price) || 0,
         size: parseFloat(formData.size) || 0,
-        images: [] // Placeholder for image upload logic later
+        images: initialData?.images || [] // Preserve existing images on edit
       };
 
-      await api.post('/properties', payload);
+      if (initialData?.id) {
+        // Update existing listing
+        await api.put(`/properties/${initialData.id}`, payload);
+      } else {
+        // Create new listing
+        await api.post('/properties', payload);
+      }
       
       onSuccess();
       onClose();
-      // Reset form
-      setFormData({
-        title: '',
-        location: '',
-        price: '',
-        size: '',
-        type: 'APARTMENT',
-        status: 'AVAILABLE',
-        description: ''
-      });
     } catch (err: any) {
-      console.error("Error creating property:", err);
-      const errorMsg = err.response?.data?.message || "Failed to create listing. Check your connection.";
+      console.error("Error saving property:", err);
+      const errorMsg = err.response?.data?.message || "Failed to save listing. Check your connection.";
       alert(errorMsg);
     } finally {
       setLoading(false);
@@ -68,7 +90,9 @@ const AddPropertyModal = ({ isOpen, onClose, onSuccess }: AddPropertyModalProps)
         <div className="flex justify-between items-center p-6 border-b">
           <div className="flex items-center gap-2">
             <Home className="text-purple-600" size={24} />
-            <h2 className="text-xl font-bold text-gray-900">New Listing</h2>
+            <h2 className="text-xl font-bold text-gray-900">
+              {initialData ? 'Edit Listing' : 'New Listing'}
+            </h2>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <X size={24} />
@@ -171,7 +195,11 @@ const AddPropertyModal = ({ isOpen, onClose, onSuccess }: AddPropertyModalProps)
               disabled={loading}
               className="flex-1 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2 disabled:bg-purple-400 text-sm font-bold"
             >
-              {loading ? <Loader2 className="animate-spin" size={18} /> : 'Publish Listing'}
+              {loading ? (
+                <Loader2 className="animate-spin" size={18} />
+              ) : (
+                initialData ? 'Save Changes' : 'Publish Listing'
+              )}
             </button>
           </div>
         </form>
