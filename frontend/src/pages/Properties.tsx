@@ -5,23 +5,28 @@
 import React, { useState, useEffect } from 'react';
 import { Building2, MapPin, Tag, Plus, MoreVertical, Loader2 } from 'lucide-react';
 import api from '../utils/api';
+// We need to import a modal here! (I'll assume you create AddPropertyModal.tsx next)
+import AddPropertyModal from '../components/AddPropertyModal'; 
 
 const Properties = () => {
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false); // Modal state added
 
   // Fetch properties from the backend
+  const fetchProperties = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get('/properties');
+      setProperties(response.data);
+    } catch (error) {
+      console.error("Failed to fetch properties:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchProperties = async () => {
-      try {
-        const response = await api.get('/properties');
-        setProperties(response.data);
-      } catch (error) {
-        console.error("Failed to fetch properties:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchProperties();
   }, []);
 
@@ -42,7 +47,11 @@ const Properties = () => {
           <h1 className="text-2xl font-bold text-gray-900">Property Listings</h1>
           <p className="text-gray-500">Manage your inventory and availability.</p>
         </div>
-        <button className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
+        {/* ADDED onClick handler */}
+        <button 
+          onClick={() => setIsModalOpen(true)}
+          className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+        >
           <Plus size={20} />
           <span>New Listing</span>
         </button>
@@ -107,6 +116,13 @@ const Properties = () => {
           <p className="text-gray-500">No properties found. Start by adding your first listing!</p>
         </div>
       )}
+
+      {/* MODAL INTEGRATION */}
+      <AddPropertyModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        onSuccess={fetchProperties}
+      />
     </div>
   );
 };

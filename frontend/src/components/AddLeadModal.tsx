@@ -26,16 +26,24 @@ const AddLeadModal = ({ isOpen, onClose, onSuccess }: AddLeadModalProps) => {
     e.preventDefault();
     setLoading(true);
     try {
+      // The 401 error means we need to ensure the API utility is sending the JWT.
       await api.post('/leads', {
         ...formData,
-        budget: formData.budget ? parseFloat(formData.budget) : null,
+        // Match the controller's normalization
+        budget: formData.budget ? parseFloat(formData.budget) : 0,
+        status: 'NEW', 
       });
       onSuccess();
       onClose();
       setFormData({ name: '', email: '', phone: '', budget: '', preference: '' });
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error creating lead:", err);
-      alert("Failed to create lead. Check your inputs.");
+      // Checking for the 401 specifically
+      if (err.response?.status === 401) {
+        alert("Session expired. Please log in again.");
+      } else {
+        alert("Failed to create lead. Check your inputs.");
+      }
     } finally {
       setLoading(false);
     }

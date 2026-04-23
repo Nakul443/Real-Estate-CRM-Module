@@ -40,9 +40,11 @@ const Dashboard = () => {
     </div>
   );
 
+  // We extract the summary and salesData objects from the data returned by your controller
   const { summary, salesData } = data || {};
 
   // Formats the raw salesData from your controller for the Recharts library
+  // This maps your commissionAmount and createdAt fields to the chart
   const chartData = salesData?.map((item: any) => ({
     date: new Date(item.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
     amount: item.commissionAmount
@@ -57,7 +59,8 @@ const Dashboard = () => {
         </div>
         <div className="bg-purple-100 text-purple-700 px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-bold">
           <Award size={18} />
-          Conversion: {summary?.conversionRate}
+          {/* Mapping the conversionRate string from your controller */}
+          Conversion: {summary?.conversionRate || '0%'}
         </div>
       </div>
 
@@ -68,7 +71,8 @@ const Dashboard = () => {
             <div className="p-3 bg-green-50 text-green-600 rounded-xl"><DollarSign size={24}/></div>
             <div>
               <p className="text-sm text-gray-500 font-medium">Total Revenue</p>
-              <h2 className="text-2xl font-bold">${summary?.totalRevenue?.toLocaleString()}</h2>
+              {/* Mapping totalRevenue from the _sum in your controller */}
+              <h2 className="text-2xl font-bold">${(summary?.totalRevenue || 0).toLocaleString()}</h2>
             </div>
           </div>
         </div>
@@ -78,7 +82,8 @@ const Dashboard = () => {
             <div className="p-3 bg-blue-50 text-blue-600 rounded-xl"><Users size={24}/></div>
             <div>
               <p className="text-sm text-gray-500 font-medium">Total Leads</p>
-              <h2 className="text-2xl font-bold">{summary?.totalLeads}</h2>
+              {/* Mapping totalLeads count from your controller */}
+              <h2 className="text-2xl font-bold">{summary?.totalLeads || 0}</h2>
             </div>
           </div>
         </div>
@@ -88,7 +93,8 @@ const Dashboard = () => {
             <div className="p-3 bg-orange-50 text-orange-600 rounded-xl"><Home size={24}/></div>
             <div>
               <p className="text-sm text-gray-500 font-medium">Available Inventory</p>
-              <h2 className="text-2xl font-bold">{summary?.activeProperties}</h2>
+              {/* Mapping activeProperties from your controller */}
+              <h2 className="text-2xl font-bold">{summary?.activeProperties || 0}</h2>
             </div>
           </div>
         </div>
