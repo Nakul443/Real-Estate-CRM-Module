@@ -1,10 +1,12 @@
 // table that lists leads with their status, contact info and assigned agent
 // now connected to the Express/Prisma backend
 // includes search filtering and loading states
+// also includes modal integration for adding new leads
 
 import React, { useState, useEffect } from 'react';
 import { Mail, Phone, MoreVertical, Plus, Search, Loader2 } from 'lucide-react';
 import api from '../utils/api'; // Ensure you have created the api utility in src/utils/api.ts
+import AddLeadModal from '../components/AddLeadModal'; // IMPORTANT: New Modal Import
 
 const Leads = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -12,22 +14,26 @@ const Leads = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch real leads from the backend on component mount
-  useEffect(() => {
-    const fetchLeads = async () => {
-      try {
-        setLoading(true);
-        const response = await api.get('/leads');
-        setLeads(response.data);
-        setError(null);
-      } catch (err) {
-        console.error("Error fetching leads:", err);
-        setError("Failed to load leads. Please check your connection.");
-      } finally {
-        setLoading(false);
-      }
-    };
+  // --- NEW STATE FOR MODAL CONTROL ---
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // Fetch real leads from the backend on component mount
+  // Moved into a named function so we can trigger a refresh after adding a lead
+  const fetchLeads = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get('/leads');
+      setLeads(response.data);
+      setError(null);
+    } catch (err) {
+      console.error("Error fetching leads:", err);
+      setError("Failed to load leads. Please check your connection.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchLeads();
   }, []);
 
@@ -55,7 +61,11 @@ const Leads = () => {
           <h1 className="text-2xl font-bold text-gray-900">Leads Management</h1>
           <p className="text-gray-500">Track and manage your property inquiries from the database.</p>
         </div>
-        <button className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
+        {/* OPEN MODAL ON CLICK */}
+        <button 
+          onClick={() => setIsModalOpen(true)}
+          className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+        >
           <Plus size={20} />
           <span>Add Lead</span>
         </button>
@@ -135,6 +145,13 @@ const Leads = () => {
           </>
         )}
       </div>
+
+      {/* --- ADD LEAD MODAL COMPONENT --- */}
+      <AddLeadModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        onSuccess={fetchLeads} // Triggers data re-fetch on success
+      />
     </div>
   );
 };
