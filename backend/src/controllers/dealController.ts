@@ -51,8 +51,8 @@ export const updateDealStage = async (req: Request, res: Response) => {
       where: { id },
       data: {
         stage: stage !== undefined ? stage : undefined,
-        // Convert undefined to null to satisfy exactOptionalPropertyTypes
-        closingDate: closingDate ? new Date(closingDate) : null,
+        // If moving to CLOSED, we set a closing date if not provided
+        closingDate: stage === 'CLOSED' ? (closingDate ? new Date(closingDate) : new Date()) : (closingDate ? new Date(closingDate) : null),
         // Append new documents to the existing array 
         ...(newDocs.length > 0 && {
           documents: {
@@ -66,5 +66,33 @@ export const updateDealStage = async (req: Request, res: Response) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Error updating deal stage' });
+  }
+};
+
+// ... keep existing createDeal and updateDealStage logic
+
+export const getDeals = async (req: Request, res: Response) => {
+  try {
+    const agentId = (req as any).user.userId;
+
+    const deals = await prisma.deal.findMany({
+      where: { agentId },
+      include: {
+        client: {
+          select: { name: true }
+        },
+        property: {
+          select: { title: true, price: true }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+
+    res.status(200).json(deals);
+  } catch (error) {
+    console.error("Fetch deals error:", error);
+    res.status(500).json({ message: 'Error fetching deals' });
   }
 };

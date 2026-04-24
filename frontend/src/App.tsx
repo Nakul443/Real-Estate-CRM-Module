@@ -13,6 +13,7 @@ import Dashboard from './pages/Dashboard';
 import Leads from './pages/Leads';
 import Properties from './pages/Properties';
 import Tasks from './pages/Tasks';
+import Deals from './pages/Deals'; // 1. IMPORT THE DEALS PAGE
 // Import Settings page (assuming you have one created or are ready to link it)
 import Settings from './pages/Settings';
 import Register  from './pages/Register';
@@ -75,6 +76,20 @@ function App() {
             token ? (
               <Layout>
                 <Tasks />
+              </Layout>
+            ) : (
+              <Navigate to="/login" />
+            )
+          } 
+        />
+
+        {/* 2. ADD PROTECTED DEALS ROUTE (KANBAN) */}
+        <Route 
+          path="/deals" 
+          element={
+            token ? (
+              <Layout>
+                <Deals />
               </Layout>
             ) : (
               <Navigate to="/login" />

@@ -10,6 +10,7 @@ import interactionRoutes from './routes/interactionRoutes.js';
 import dealRoutes from './routes/dealRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
 import taskRoutes from './routes/taskRoutes.js';
+import settingsRoutes from './routes/settingsRoutes.js'; // 1. IMPORT THIS
 import dotenv from 'dotenv';
 
 // Load environment variables (DB URL, JWT Secret, etc.)
@@ -30,9 +31,12 @@ app.use('/api/interactions', interactionRoutes);
 app.use('/api/deals', dealRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/tasks', taskRoutes);
+app.use('/api/settings', settingsRoutes);
 
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
+
+export default app; // Exporting app for testing purposes
