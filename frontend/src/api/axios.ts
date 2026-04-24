@@ -5,8 +5,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  // This must match your Node.js server port
-  baseURL: 'http://localhost:5000/api', 
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
 });
 
 // Interceptor to automatically add the JWT token to every request
