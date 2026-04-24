@@ -42,8 +42,10 @@ export const getMyTasks = async (req: Request, res: Response) => {
 
 export const toggleTaskStatus = async (req: Request, res: Response) => {
   try {
+    // FIXED: Normalize ID to avoid type mismatches
     const rawId = (req.params as any).id as string | string[] | undefined;
     const id = Array.isArray(rawId) ? rawId[0] : rawId;
+    
     if (!id) return res.status(400).json({ message: 'Task id is required' });
     
     const task = await prisma.task.findUnique({ where: { id } });
@@ -57,5 +59,50 @@ export const toggleTaskStatus = async (req: Request, res: Response) => {
     res.status(200).json(updatedTask);
   } catch (error) {
     res.status(500).json({ message: 'Error updating task' });
+  }
+};
+
+// NEW: Added updateTask to handle editing
+export const updateTask = async (req: Request, res: Response) => {
+  try {
+    // FIXED: Normalize ID logic here as well
+    const rawId = (req.params as any).id as string | string[] | undefined;
+    const id = Array.isArray(rawId) ? rawId[0] : rawId;
+
+    if (!id) return res.status(400).json({ message: 'Task id is required' });
+
+    const { title, description, dueDate } = req.body;
+
+    const updatedTask = await prisma.task.update({
+      where: { id },
+      data: {
+        title,
+        description,
+        dueDate: new Date(dueDate),
+      },
+    });
+
+    res.status(200).json(updatedTask);
+  } catch (error) {
+    console.error("Task update error:", error);
+    res.status(500).json({ message: 'Error updating task details' });
+  }
+};
+
+export const deleteTask = async (req: Request, res: Response) => {
+  try {
+    const rawId = (req.params as any).id as string | string[] | undefined;
+    const id = Array.isArray(rawId) ? rawId[0] : rawId;
+
+    if (!id) return res.status(400).json({ message: 'Task id is required' });
+
+    await prisma.task.delete({
+      where: { id },
+    });
+
+    res.status(200).json({ message: 'Task deleted successfully' });
+  } catch (error) {
+    console.error("Delete task error:", error);
+    res.status(500).json({ message: 'Error deleting task' });
   }
 };

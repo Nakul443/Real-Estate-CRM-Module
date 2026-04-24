@@ -1,13 +1,8 @@
-// tracks follow-ups, viewings, and deadlines
-// allows agents to stay organized with their daily pipeline
-// provides status updates for each specific task
-
 import React, { useState, useEffect } from 'react';
-import { CheckCircle2, Clock, AlertCircle, Plus, Calendar, Loader2 } from 'lucide-react';
+import { CheckCircle2, Clock, AlertCircle, Plus, Calendar, Loader2, Trash2, Edit3 } from 'lucide-react'; // Added icons
 import api from '../utils/api';
 import AddTaskModal from '../components/AddTaskModal';
 
-// Define the interface to stop the TypeScript "never[]" error
 interface Task {
   id: string;
   title: string;
@@ -22,22 +17,18 @@ const Tasks = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
   const fetchTasks = async () => {
     try {
       setLoading(true);
-      // FIXED: Calling '/tasks' because your route is router.get('/', ...)
       const response = await api.get('/tasks'); 
-      
-      // Safety check to ensure data is an array
       const data = Array.isArray(response.data) ? response.data : [];
       setTasks(data);
       setError(null);
     } catch (err: any) {
-      console.error("Error fetching tasks:", err);
-      setError("Failed to load tasks. Check your connection.");
+      setError("Failed to load tasks.");
     } finally {
-      // This ensures the loading spinner ALWAYS turns off
       setLoading(false);
     }
   };
@@ -48,12 +39,23 @@ const Tasks = () => {
 
   const handleToggleStatus = async (taskId: string) => {
     try {
-      // FIXED: Matches your router.patch('/:id/status', ...)
       await api.patch(`/tasks/${taskId}/status`);
       fetchTasks(); 
     } catch (err) {
-      console.error("Toggle error:", err);
       alert("Failed to update task.");
+    }
+  };
+
+  // NEW: handle delete with "Are you sure?" check
+  const handleDelete = async (taskId: string) => {
+    if (window.confirm("Are you sure you want to delete this task? This action cannot be undone.")) {
+      try {
+        await api.delete(`/tasks/${taskId}`);
+        fetchTasks();
+      } catch (err) {
+        console.error("Delete error:", err);
+        alert("Failed to delete task.");
+      }
     }
   };
 
@@ -75,7 +77,10 @@ const Tasks = () => {
             <p className="text-gray-500">Keep track of your daily action items.</p>
           </div>
           <button 
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => {
+              setSelectedTask(null);
+              setIsModalOpen(true);
+            }}
             className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
           >
             <Plus size={20} />
@@ -89,15 +94,9 @@ const Tasks = () => {
               <Loader2 className="animate-spin text-purple-600 mb-4" size={32} />
               <p className="text-gray-500 text-sm">Loading your schedule...</p>
             </div>
-          ) : error ? (
-            <div className="bg-red-50 border border-red-200 p-10 rounded-xl text-center">
-              <AlertCircle className="mx-auto text-red-500 mb-2" size={32} />
-              <p className="text-red-600 font-medium">{error}</p>
-              <button onClick={fetchTasks} className="mt-4 text-purple-600 font-bold underline text-sm">Try Again</button>
-            </div>
           ) : tasks.length === 0 ? (
-            <div className="bg-white p-20 rounded-xl border border-dashed border-gray-200 text-center">
-              <p className="text-gray-400">No tasks assigned to you yet.</p>
+            <div className="bg-white p-20 rounded-xl border border-dashed border-gray-200 text-center text-gray-400">
+              No tasks assigned to you yet.
             </div>
           ) : (
             tasks.map((task) => (
@@ -120,18 +119,29 @@ const Tasks = () => {
                       <span className="text-gray-400 flex items-center gap-1">
                         <Calendar size={14} /> {new Date(task.dueDate).toLocaleDateString()}
                       </span>
-                      {task.description && (
-                        <span className="text-gray-400 flex items-center gap-1 italic">
-                          — {task.description}
-                        </span>
-                      )}
                     </div>
                   </div>
                 </div>
                 
-                <button className="text-sm font-medium text-purple-600 hover:text-purple-800">
-                  Edit Task
-                </button>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => {
+                      setSelectedTask(task);
+                      setIsModalOpen(true);
+                    }}
+                    className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all"
+                    title="Edit Task"
+                  >
+                    <Edit3 size={18} />
+                  </button>
+                  <button 
+                    onClick={() => handleDelete(task.id)}
+                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                    title="Delete Task"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
               </div>
             ))
           )}
@@ -140,8 +150,12 @@ const Tasks = () => {
 
       <AddTaskModal 
         isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedTask(null);
+        }} 
         onSuccess={fetchTasks} 
+        initialData={selectedTask}
       />
     </>
   );

@@ -1,12 +1,59 @@
 // This page handles user preferences and system integrations.
 // It allows agents to configure their profile and admins to manage CRM automations.
-// Current status: Basic profile and Webhook configuration.
+// Current status: Functional profile and Webhook configuration.
 
-import React, { useState } from 'react';
-import { User, Bell, Shield, Globe, Save, Link as LinkIcon } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { User, Bell, Shield, Globe, Save, Link as LinkIcon, Loader2 } from 'lucide-react';
+import api from '../utils/api';
 
 const Settings = () => {
-  const [n8nWebhook, setN8nWebhook] = useState('https://n8n.your-instance.com/webhook/crm-alerts');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    webhookUrl: ''
+  });
+
+  // Fetch current settings on load
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const response = await api.get('/settings');
+        setFormData({
+          name: response.data.name || '',
+          email: response.data.email || '',
+          webhookUrl: response.data.webhookUrl || ''
+        });
+      } catch (error) {
+        console.error("Failed to fetch settings:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSettings();
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await api.patch('/settings', formData);
+      alert("Settings updated successfully!");
+    } catch (error) {
+      console.error("Failed to save settings:", error);
+      alert("Error saving settings.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="animate-spin text-purple-600" size={32} />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl space-y-6">
@@ -26,8 +73,9 @@ const Settings = () => {
           ].map((item) => (
             <button
               key={item.name}
+              disabled={!item.active}
               className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                item.active ? 'bg-purple-50 text-purple-600' : 'text-gray-600 hover:bg-gray-50'
+                item.active ? 'bg-purple-50 text-purple-600' : 'text-gray-300 cursor-not-allowed'
               }`}
             >
               <item.icon size={18} />
@@ -46,11 +94,21 @@ const Settings = () => {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label className="text-xs font-bold text-gray-400 uppercase">Full Name</label>
-                <input type="text" className="w-full p-2 border border-gray-200 rounded-lg text-sm" placeholder="John Doe" />
+                <input 
+                  type="text" 
+                  className="w-full p-2 border border-gray-200 rounded-lg text-sm" 
+                  value={formData.name}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                />
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-bold text-gray-400 uppercase">Email Address</label>
-                <input type="email" className="w-full p-2 border border-gray-200 rounded-lg text-sm" placeholder="john@realestate.com" />
+                <input 
+                  type="email" 
+                  className="w-full p-2 border border-gray-200 rounded-lg text-sm bg-gray-50" 
+                  value={formData.email}
+                  disabled // Email usually handled via auth, making it read-only here for safety
+                />
               </div>
             </div>
           </div>
@@ -65,13 +123,18 @@ const Settings = () => {
               <label className="text-xs font-bold text-gray-400 uppercase">Webhook URL</label>
               <input 
                 type="text" 
-                value={n8nWebhook}
-                onChange={(e) => setN8nWebhook(e.target.value)}
+                value={formData.webhookUrl}
+                onChange={(e) => setFormData({...formData, webhookUrl: e.target.value})}
                 className="w-full p-2 border border-gray-200 rounded-lg text-sm font-mono text-gray-600" 
               />
             </div>
-            <button className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-purple-700 transition-colors">
-              <Save size={16} /> Save Changes
+            <button 
+              onClick={handleSave}
+              disabled={saving}
+              className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-purple-700 transition-colors disabled:bg-purple-400"
+            >
+              {saving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
+              Save Changes
             </button>
           </div>
         </div>

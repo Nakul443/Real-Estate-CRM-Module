@@ -45,6 +45,7 @@ model User {
   name         String
   role         Role          @default(AGENT)
   leads        Lead[]
+  webhookUrl   String?       @default("https://n8n.your-instance.com/webhook/crm-alerts")
   properties   Property[]
   deals        Deal[]
   interactions Interaction[]

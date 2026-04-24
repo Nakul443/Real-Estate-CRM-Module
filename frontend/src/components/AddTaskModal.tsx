@@ -2,7 +2,7 @@
 // It captures the title, description, and due date.
 // Connected to the createTask function in the backend Taskcontroller.
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Loader2, Calendar, Layout, AlignLeft } from 'lucide-react';
 import api from '../utils/api';
 
@@ -10,9 +10,10 @@ interface AddTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  initialData?: any; // Added for edit support
 }
 
-const AddTaskModal = ({ isOpen, onClose, onSuccess }: AddTaskModalProps) => {
+const AddTaskModal = ({ isOpen, onClose, onSuccess, initialData }: AddTaskModalProps) => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
@@ -20,21 +21,40 @@ const AddTaskModal = ({ isOpen, onClose, onSuccess }: AddTaskModalProps) => {
     dueDate: '',
   });
 
+  // NEW: Sync form data when editing
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        title: initialData.title || '',
+        description: initialData.description || '',
+        // Format date to YYYY-MM-DD for the input type="date"
+        dueDate: initialData.dueDate ? new Date(initialData.dueDate).toISOString().split('T')[0] : '',
+      });
+    } else {
+      setFormData({ title: '', description: '', dueDate: '' });
+    }
+  }, [initialData, isOpen]);
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      // Sending data to the createTask endpoint
-      await api.post('/tasks', formData);
+      if (initialData?.id) {
+        // Update existing task
+        await api.patch(`/tasks/${initialData.id}`, formData);
+      } else {
+        // Create new task
+        await api.post('/tasks', formData);
+      }
+      
       onSuccess();
       onClose();
-      // Reset form state
       setFormData({ title: '', description: '', dueDate: '' });
     } catch (err: any) {
-      console.error("Error creating task:", err);
-      alert(err.response?.data?.message || "Failed to create task.");
+      console.error("Error saving task:", err);
+      alert(err.response?.data?.message || "Failed to save task.");
     } finally {
       setLoading(false);
     }
@@ -46,7 +66,9 @@ const AddTaskModal = ({ isOpen, onClose, onSuccess }: AddTaskModalProps) => {
         <div className="flex justify-between items-center p-6 border-b">
           <div className="flex items-center gap-2">
             <Layout className="text-purple-600" size={20} />
-            <h2 className="text-xl font-bold text-gray-900">Create New Task</h2>
+            <h2 className="text-xl font-bold text-gray-900">
+              {initialData ? 'Edit Task' : 'Create New Task'}
+            </h2>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
             <X size={24} />
@@ -107,7 +129,11 @@ const AddTaskModal = ({ isOpen, onClose, onSuccess }: AddTaskModalProps) => {
               disabled={loading}
               className="flex-1 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2 disabled:bg-purple-400 text-sm font-bold"
             >
-              {loading ? <Loader2 className="animate-spin" size={18} /> : 'Save Task'}
+              {loading ? (
+                <Loader2 className="animate-spin" size={18} />
+              ) : (
+                initialData ? 'Update Task' : 'Save Task'
+              )}
             </button>
           </div>
         </form>
