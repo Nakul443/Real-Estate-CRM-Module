@@ -1,4 +1,4 @@
-import { PrismaClient } from '../../generated/prisma/index.js';
+import { PrismaClient } from '../generated/prisma/index.js';
 
 // Global type augmentation to prevent multiple instances in dev
 const globalForPrisma = globalThis as unknown as {

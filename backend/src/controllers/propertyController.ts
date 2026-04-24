@@ -1,6 +1,6 @@
 import type { Response } from 'express';
 import { prisma } from '../utils/prisma.js';
-import type { Prisma } from '../../generated/prisma/index.js';
+import type { Prisma } from '../generated/prisma/index.js';
 import type { AuthRequest } from '../middlewares/authMiddleware.js';
 
 export const createProperty = async (req: AuthRequest, res: Response) => {

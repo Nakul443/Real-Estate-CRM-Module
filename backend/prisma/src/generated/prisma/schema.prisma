@@ -1,0 +1,137 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "./src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  AGENT
+  MANAGER
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  CLOSED
+  LOST
+}
+
+enum PropertyStatus {
+  AVAILABLE
+  SOLD
+  RENTED
+  PENDING
+}
+
+enum DealStage {
+  NEGOTIATION
+  AGREEMENT
+  CLOSED
+}
+
+model User {
+  id           String        @id @default(uuid())
+  email        String        @unique
+  password     String
+  name         String
+  role         Role          @default(AGENT)
+  leads        Lead[]
+  webhookUrl   String?       @default("https://n8n.your-instance.com/webhook/crm-alerts")
+  properties   Property[]
+  deals        Deal[]
+  interactions Interaction[]
+  tasks        Task[] // Track agent task assignments
+}
+
+model Lead {
+  id           String     @id @default(uuid())
+  name         String
+  phone        String
+  email        String?
+  budget       Float?
+  preference   String?
+  source       String? // e.g., Website, Ads
+  status       LeadStatus @default(NEW)
+  agent        User       @relation(fields: [agentId], references: [id])
+  agentId      String
+  clients      Client[]
+  followUpDate DateTime? // For reminders
+  createdAt    DateTime   @default(now())
+}
+
+model Property {
+  id          String         @id @default(uuid())
+  title       String
+  description String
+  location    String //
+  latitude    Float? // Added for Map Integration 
+  longitude   Float? // Added for Map Integration 
+  price       Float
+  size        Float
+  type        String // Residential/Commercial
+  amenities   String?
+  images      String[] // Array of URLs
+  status      PropertyStatus @default(AVAILABLE)
+  agent       User           @relation(fields: [agentId], references: [id])
+  agentId     String
+  deals       Deal[]
+}
+
+model Client {
+  id           String        @id @default(uuid())
+  name         String
+  phone        String
+  email        String?       @unique
+  type         String // Buyer/Seller
+  lead         Lead?         @relation(fields: [leadId], references: [id])
+  leadId       String?
+  deals        Deal[]
+  interactions Interaction[]
+}
+
+model Deal {
+  id               String    @id @default(uuid())
+  stage            DealStage @default(NEGOTIATION)
+  commissionAmount Float? //
+  closingDate      DateTime?
+  documents        String[] // Array of URLs for agreements/contracts 
+  client           Client    @relation(fields: [clientId], references: [id])
+  clientId         String
+  property         Property? @relation(fields: [propertyId], references: [id])
+  propertyId       String?
+  agent            User      @relation(fields: [agentId], references: [id])
+  agentId          String
+  createdAt        DateTime  @default(now())
+}
+
+model Interaction {
+  id        String   @id @default(uuid())
+  type      String // Call, SMS, Email
+  notes     String?
+  timestamp DateTime @default(now())
+  client    Client   @relation(fields: [clientId], references: [id])
+  clientId  String
+  agent     User     @relation(fields: [agentId], references: [id])
+  agentId   String
+}
+
+// Added for Task assignment and Notifications 
+model Task {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  dueDate     DateTime
+  isCompleted Boolean  @default(false)
+  agent       User     @relation(fields: [agentId], references: [id])
+  agentId     String
+  createdAt   DateTime @default(now())
+}

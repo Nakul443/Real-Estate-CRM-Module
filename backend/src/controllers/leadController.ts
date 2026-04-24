@@ -4,7 +4,7 @@
 
 import type { Response } from 'express';
 import { prisma } from '../utils/prisma.js';
-import { LeadStatus } from '../../generated/prisma/index.js';
+import { LeadStatus } from '../generated/prisma/index.js';
 import { triggerLeadWebhook } from '../utils/webhook.js'; // Import the n8n utility
 import type { AuthRequest } from '../middlewares/authMiddleware.js';
 
