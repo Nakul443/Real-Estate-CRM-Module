@@ -1,50 +1,82 @@
 import request from 'supertest';
 import app from '../src/index.js'; 
+import { prisma } from '../src/utils/prisma.js';
 
 describe('Deal Module Tests', () => {
-  // 1. DEFINE THE VARIABLES HERE
   let adminToken: string;
   let agentToken: string;
-  let mockToken: string; // Use this or consolidate with agentToken
+  let testClientId: string;
+  let testPropertyId: string;
 
-  // 2. FETCH TOKENS BEFORE RUNNING TESTS
   beforeAll(async () => {
-    // Login as an Admin to get the adminToken
+    // 1. Get Tokens
     const adminRes = await request(app)
       .post('/api/auth/login')
       .send({ email: 'admin@recrm.com', password: 'password123' });
     adminToken = adminRes.body.token;
 
-    // Login as an Agent to get the agentToken
     const agentRes = await request(app)
       .post('/api/auth/login')
       .send({ email: 'agent@recrm.com', password: 'password123' });
     agentToken = agentRes.body.token;
-    mockToken = agentToken; // Setting mockToken for your first test
+
+    // 2. Create actual DB records to satisfy Foreign Key constraints
+    const client = await prisma.client.upsert({
+      where: { email: 'testclient@example.com' },
+      update: {},
+      create: { 
+        name: 'Test Client', 
+        email: 'testclient@example.com', 
+        phone: '123456789',
+        type: 'BUYER' 
+      }
+    });
+    testClientId = client.id;
+
+    // UPDATED PROPERTY SEED
+    const property = await prisma.property.create({
+      data: { 
+        title: 'Test Villa', 
+        price: 100000, 
+        status: 'AVAILABLE',
+        description: 'A beautiful test villa', // Added
+        location: 'Test City',                // Added
+        size: 2000,                           // Added
+        type: 'RESIDENTIAL',                  // Added (Check your enum if this fails)
+        agent: {
+          connect: { email: 'admin@recrm.com' } // Connects it to the admin user we seeded
+        }
+      }
+    });
+    testPropertyId = property.id;
   });
 
   it('should create a deal and store the correct commission', async () => {
     const response = await request(app)
       .post('/api/deals')
-      .set('Authorization', `Bearer ${mockToken}`) // Now defined!
+      .set('Authorization', `Bearer ${agentToken}`)
       .send({
-        clientId: 'client-123',
-        propertyId: 'prop-456',
+        clientId: testClientId,
+        propertyId: testPropertyId,
         commissionAmount: '5000.50',
         stage: 'NEGOTIATION'
       });
 
     expect(response.status).toBe(201);
-    // Verifies commission calculation logic 
     expect(response.body.commissionAmount).toBe(5000.50); 
   });
 
   it('should restrict an agent from accessing admin analytics', async () => {
     const response = await request(app)
       .get('/api/dashboard/stats')
-      .set('Authorization', `Bearer ${agentToken}`); // Now defined!
+      .set('Authorization', `Bearer ${agentToken}`);
 
-    // Verifies Role-based permissions [cite: 65, 101]
     expect(response.status).toBe(403); 
+  });
+
+  afterAll(async () => {
+    // Cleanup
+    await prisma.deal.deleteMany({ where: { clientId: testClientId } });
+    await prisma.property.deleteMany({ where: { id: testPropertyId } });
   });
 });

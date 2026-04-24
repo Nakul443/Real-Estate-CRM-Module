@@ -90,7 +90,7 @@ model Client {
   id           String        @id @default(uuid())
   name         String
   phone        String
-  email        String?
+  email        String?       @unique
   type         String        // Buyer/Seller
   lead         Lead?         @relation(fields: [leadId], references: [id])
   leadId       String?

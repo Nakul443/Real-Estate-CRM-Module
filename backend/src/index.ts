@@ -1,4 +1,4 @@
-// entry point for the node.js express server
+// backend/src/index.ts
 
 import express from 'express';
 import cors from 'cors';
@@ -10,19 +10,16 @@ import interactionRoutes from './routes/interactionRoutes.js';
 import dealRoutes from './routes/dealRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
 import taskRoutes from './routes/taskRoutes.js';
-import settingsRoutes from './routes/settingsRoutes.js'; // 1. IMPORT THIS
+import settingsRoutes from './routes/settingsRoutes.js'; 
 import dotenv from 'dotenv';
 
-// Load environment variables (DB URL, JWT Secret, etc.)
 dotenv.config();
 
 const app = express();
 
-// Middlewares
 app.use(cors());
-app.use(express.json()); // Essential for parsing JSON bodies
+app.use(express.json()); 
 
-// Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/leads', leadRoutes);
 app.use('/api/properties', propertyRoutes);
@@ -35,8 +32,11 @@ app.use('/api/settings', settingsRoutes);
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+// ONLY START THE SERVER IF NOT IN TESTING MODE
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+  });
+}
 
-export default app; // Exporting app for testing purposes
+export default app;

@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "node --env-file ../.env --loader ts-node/esm src/index.ts",
     "build": "tsc -p tsconfig.json",
-    "start": "node dist/src/index.js"
+    "start": "node dist/src/index.js",
+    "test": "NODE_OPTIONS='--experimental-vm-modules' node --env-file=../.env node_modules/.bin/jest"
   },
   "dependencies": {
     "@prisma/client": "^6.16.2",
